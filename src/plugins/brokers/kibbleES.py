@@ -33,7 +33,7 @@ class KibbleESWrapper(object):
     def __init__(self, ES):
         self.ES = ES
         self.indices = self.indicesClass(ES)
-    
+
     def get(self, index, doc_type, id):
         return self.ES.get(index = index+'_'+doc_type, doc_type = '_doc', id = id)
     def exists(self, index, doc_type, id):
@@ -58,12 +58,12 @@ class KibbleESWrapper(object):
             doc_type = '_doc',
             body = body
             )
-    
+
     class indicesClass(object):
         """ Indices helper class """
         def __init__(self, ES):
             self.ES = ES
-            
+
         def exists(self, index):
             return self.ES.indices.exists(index = index)
 
@@ -75,7 +75,7 @@ class KibbleESWrapperSeven(object):
     def __init__(self, ES):
         self.ES = ES
         self.indices = self.indicesClass(ES)
-    
+
     def get(self, index, doc_type, id):
         return self.ES.get(index = index+'_'+doc_type, id = id)
     def exists(self, index, doc_type, id):
@@ -86,11 +86,11 @@ class KibbleESWrapperSeven(object):
         return self.ES.index(index = index+'_'+doc_type, id = id, body = body)
     def update(self, index, doc_type, id, body):
         return self.ES.update(index = index+'_'+doc_type, id = id, body = body)
-    def search(self, index, doc_type, size = 100, _source_include = None, body = None):
+    def search(self, index, doc_type, size = 100, _source_includes = None, body = None):
         return self.ES.search(
             index = index+'_'+doc_type,
             size = size,
-            _source_include = _source_include,
+            _source_includes = _source_includes,
             body = body
             )
     def count(self, index, doc_type, body = None):
@@ -98,16 +98,16 @@ class KibbleESWrapperSeven(object):
             index = index+'_'+doc_type,
             body = body
             )
-    
+
     class indicesClass(object):
         """ Indices helper class """
         def __init__(self, ES):
             self.ES = ES
-            
+
         def exists(self, index):
             return self.ES.indices.exists(index = index)
 
-         
+
 
 # This is redundant, refactor later?
 def pprint(string, err = False):
@@ -119,7 +119,7 @@ def pprint(string, err = False):
 
 class KibbleBit:
     """ KibbleBit class with direct ElasticSearch access """
-    
+
     def __init__(self, broker, organisation, tid):
         self.config = broker.config
         self.organisation = organisation
@@ -129,20 +129,20 @@ class KibbleBit:
         self.pluginname = ""
         self.tid = tid
         self.dbname = self.broker.config['elasticsearch']['database']
-    
+
     def __del__(self):
         """ On unload/delete, push the last chunks of data to ES """
         if self.json_queue:
             print("Pushing stragglers")
             self.bulk()
-            
+
     def pprint(self,  string, err = False):
         line = "[thread#%i:%s]: %s" % (self.tid, self.pluginname, string)
         if err:
             sys.stderr.write(line + "\n")
         else:
             print(line)
-        
+
     def updateSource(self, source):
         """ Updates a source document, usually with a status update """
         self.broker.DB.index(index=self.broker.config['elasticsearch']['database'],
@@ -150,23 +150,23 @@ class KibbleBit:
                 id=source['sourceID'],
                 body = source
         )
-        
+
     def get(self, doctype, docid):
         """ Fetches a document from the DB """
         doc = self.broker.DB.get(index=self.broker.config['elasticsearch']['database'], doc_type=doctype, id = docid)
         if doc:
             return doc['_source']
         return None
-    
+
     def exists(self, doctype, docid):
         """ Checks whether a document already exists or not """
         return self.broker.DB.exists(index=self.broker.config['elasticsearch']['database'], doc_type=doctype, id = docid)
-    
+
     def index(self, doctype, docid, document):
         """ Adds a new document to the index """
         dbname = self.broker.config['elasticsearch']['database']
-        self.broker.DB.index(index=dbname, doc_type = doctype, id = docid, body = document)        
-        
+        self.broker.DB.index(index=dbname, doc_type = doctype, id = docid, body = document)
+
     def append(self, t, doc):
         """ Append a document to the bulk push queue """
         if not 'id' in doc:
@@ -178,7 +178,7 @@ class KibbleBit:
         if len(self.json_queue) > self.queueMax:
             pprint("Bulk push forced")
             self.bulk()
-        
+
     def bulk(self):
         """ Push pending JSON objects in the queue to ES"""
         xjson = self.json_queue
@@ -212,16 +212,16 @@ class KibbleBit:
             elasticsearch.helpers.bulk(self.broker.oDB, js_arr)
         except Exception as err:
             pprint("Warning: Could not bulk insert: %s" % err)
-        
+
 
 class KibbleOrganisation:
     """ KibbleOrg with direct ElasticSearch access """
     def __init__(self, broker, org):
         """ Init an org, set up ElasticSearch for KibbleBits later on """
-        
+
         self.broker = broker
         self.id = org
-    
+
     def sources(self, sourceType = None, view = None):
         """ Get all sources or sources of a specific type for an org """
         s = []
@@ -267,7 +267,7 @@ class KibbleOrganisation:
                 }
             }
         )
-    
+
         for hit in res['hits']['hits']:
             if sourceType == None or hit['_source']['type'] == sourceType:
                 s.append(hit['_source'])
@@ -330,11 +330,11 @@ class Broker:
         except:
             sys.stderr.write("Invalid or missing API/ABI version in database %s! Please ensure the database has been primed by setup.py\n" % es_config['database'])
             sys.exit(-1)
-    
+
     def organisations(self):
         """ Return a list of all organisations """
         orgs = []
-        
+
         # Run the search, fetch all orgs, 9999 max. TODO: Scroll???
         res = self.DB.search(
             index=self.config['elasticsearch']['database'],
@@ -346,10 +346,8 @@ class Broker:
                 }
             }
         )
-    
+
         for hit in res['hits']['hits']:
             org = hit['_source']['id']
             orgClass = KibbleOrganisation(self, org)
             yield orgClass
-        
-    
