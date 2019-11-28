@@ -1,0 +1,11 @@
+{
+  "sources":[
+    {"sourceID":"abcdef12345678",
+      "organisation":"test",
+      "type":"git",
+      "sourceURL":"https://github.com/chaoss/grimoirelab-perceval.git",
+      "password":"_GitHubpassword_",
+      "username":"_GitHubusername_"
+    }
+  ]
+}
